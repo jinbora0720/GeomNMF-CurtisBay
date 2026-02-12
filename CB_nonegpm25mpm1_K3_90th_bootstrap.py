@@ -20,8 +20,8 @@ from src.XRAY import xray_BJ
 # Load data
 obj = load("data/CB_10locs_complete_nonegpm25mpm1.joblib")
 df = obj["df"]
-Y_org = obj["Y"]
 ys = ['pm1', 'pm25mpm1', 'pm10mpm25', 'tspmpm10', 'bc', 'co', 'no', 'no2']
+Y_org = df.loc[:, ys]
 col_label = ["PM1", "PM2.5-PM1", "PM10-PM2.5", "TSP-PM10", "BC", "CO", "NO", "NO2"]
 
 # standardization using 90th percentile
