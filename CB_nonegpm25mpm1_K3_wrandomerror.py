@@ -108,6 +108,7 @@ for col in Y.columns:
         Y[col] = Y[col] - min_j
     Y[col] = Y[col]/iqnr_j
 
+Y = np.asarray(Y)
 r = Y.sum(axis=1, keepdims=True)
 Y_star = Y / r
 bulldozer = df['bulldozer'].to_numpy()                   # covariate aligned with resampled rows
