@@ -287,7 +287,7 @@ def sourceXray(Y, K, seed=123, prune=False, min_K=None, tol=1e-12, verbose=False
     # Step 1: Prepare projected hull points if candidates not given
     Y_star_np = Y_star
     Y_star_reduced = Y_star_np[:, :-1]
-    basis, rank, mean = get_affine_basis_trimmed(Y_star_np, tol=1e-10)
+    basis, rank, mean = get_affine_basis_trimmed(Y_star_np, tol=tol)
     Y_star_proj = project_to_intrinsic(Y_star_reduced, basis, mean)   
 
     if verbose: 
