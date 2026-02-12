@@ -142,5 +142,5 @@ results_boots["W_tilde_qbybulldozer_xray"] = quantiles_by_group(W_tilde_hat_perm
 results_boots["W_tilde_qbydownwind_xray"] = quantiles_by_group(W_tilde_hat_perm_xray, downwind_b, q_levels)
 results_boots["W_tilde_qbyinteraction_xray"] = quantiles_by_group(W_tilde_hat_perm_xray, interaction_b, q_levels)
 
-dump(results_boots, outdir/f"CB_nonegpm25mpm1_K3_90th_bootstrap_rep{rep}.joblib")   
+dump(results_boots, outdir/"diffperc"/f"CB_nonegpm25mpm1_K3_90th_bootstrap_rep{rep}.joblib")   
 
