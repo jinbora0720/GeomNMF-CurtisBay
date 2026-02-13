@@ -140,7 +140,7 @@ H_star_hat_xray, _ = xray_BJ(Y_star, K, seed = seed_rep, normalize = False, pref
 W_star_hat_xray, _, _ = solve_H_right_inverse(Y_star, H_star_hat_xray)
 W_rs = W_star_hat_xray.sum(axis=1, keepdims=True)
 W_star_hat_xray = W_star_hat_xray/W_rs
-W_tilde_hat_xray = W_star_hat_xray * rb     
+W_tilde_hat_xray = W_star_hat_xray * r     
 mu_tilde_hat_xray = W_tilde_hat_xray.mean(axis=0)
 C_hat_xray = compute_C(mu_tilde_hat_xray, H_star_hat_xray)
 end = time.time()
