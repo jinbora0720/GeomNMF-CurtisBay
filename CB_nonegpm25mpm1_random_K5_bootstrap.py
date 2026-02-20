@@ -8,6 +8,7 @@ import time
 import pandas as pd
 from joblib import dump, load
 from pathlib import Path
+import sys
 
 ## sourceXray
 from src.sourceXray_BJ import sourceXray, compute_C, solve_H_right_inverse
@@ -79,6 +80,9 @@ results_boots = {
 # Bootstrap 
 rep_env = os.environ.get("SLURM_ARRAY_TASK_ID")
 rep = int(rep_env) if rep_env else 1
+file_rep = outdir/"K5"/f"CB_nonegpm25mpm1_random_K5_bootstrap_rep{rep}.joblib"
+if file_rep.exists():
+    sys.exit(0)  # skip if already done
 seed_rep = seed+rep
 rng = np.random.default_rng(seed_rep)
 results_boots["seed"] = seed_rep
