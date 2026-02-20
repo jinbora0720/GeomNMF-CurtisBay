@@ -31,7 +31,7 @@ outdir.mkdir(parents=True, exist_ok=True)
 
 # bootstrap settings
 seed = 1
-K = 4
+K = 5
 n, J = Y.shape
 
 # reference H 
