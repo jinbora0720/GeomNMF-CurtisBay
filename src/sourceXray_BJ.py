@@ -411,6 +411,8 @@ def sourceXray(Y, K, seed=123, tol=1e-12,
     U, S, Vt = np.linalg.svd(Yc, full_matrices=False)
     rank = int(np.sum(S > tol))
     basis = Vt[:rank].T
+    # if verbose:
+    #     print("affine dimension ~", rank)
 
     # project to intrinsic coords
     Yc_proj = Yc @ basis # (n, rank) 
@@ -425,7 +427,7 @@ def sourceXray(Y, K, seed=123, tol=1e-12,
         cand_idx = hull.vertices
 
         if verbose:
-            print(f" done in {time.time()-start:.2f}s")
+            print(f" done in {time.time()-start:.2f}s; #cands={len(cand_idx)}")
         
         cand_proj = Yc_proj[cand_idx]  # projected coordinates
 
@@ -449,10 +451,14 @@ def sourceXray(Y, K, seed=123, tol=1e-12,
     # distance based pruning is good to handle "near duplicates"
     if prune:
         min_K = 10*K if min_K is None else min_K
-        pruned_pts, pruned_idx_local = prune_close_points(cand_proj, min_K=min_K)
-        cand_ambient = cand_ambient[pruned_idx_local]
-        if verbose: 
-            print("Number of pruned candidates:", len(pruned_pts))
+        if min_K >= len(cand_proj):
+            if verbose:
+                print(f"Pruning skipped since candidate count {len(cand_proj)} <= min_K {min_K}")
+        else:
+            pruned_pts, pruned_idx_local = prune_close_points(cand_proj, min_K=min_K)
+            cand_ambient = cand_ambient[pruned_idx_local]
+            if verbose: 
+                print("Number of pruned candidates:", len(pruned_pts))
 
     H_candidates = cand_ambient
 
