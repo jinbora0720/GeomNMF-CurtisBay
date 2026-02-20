@@ -95,7 +95,7 @@ interaction_b = df['bulldozerxdownwind'].to_numpy()[idx]
 # sourceXray
 start = time.time()
 H_star_hat, W_tilde_hat, mu_tilde_hat, C_hat, logvol_hat = sourceXray(Yb, K, candidate_method="random", 
-                                                                      T=20000, topk=1, max_K=50*K, seed=seed_rep, prune=True, min_K=30*K, verbose=False)[0]
+                                                                      T=20000, topk=1, max_K=40*K, seed=seed_rep, prune=True, min_K=30*K, verbose=False)[0]
 end = time.time()
 results_boots["time_sourceXray"] = end - start
 results_boots["logvol_sourceXray"] = logvol_hat
@@ -134,5 +134,5 @@ results_boots["W_tilde_qbybulldozer_xray"] = quantiles_by_group(W_tilde_hat_perm
 results_boots["W_tilde_qbydownwind_xray"] = quantiles_by_group(W_tilde_hat_perm_xray, downwind_b, q_levels)
 results_boots["W_tilde_qbyinteraction_xray"] = quantiles_by_group(W_tilde_hat_perm_xray, interaction_b, q_levels)
 
-dump(results_boots, outdir/f"CB_nonegpm25mpm1_random_K5_bootstrap_rep{rep}.joblib")   
+dump(results_boots, outdir/"K5"/f"CB_nonegpm25mpm1_random_K5_bootstrap_rep{rep}.joblib")   
 
