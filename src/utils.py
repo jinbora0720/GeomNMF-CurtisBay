@@ -587,6 +587,7 @@ def plot_full_scatter_matrix(
     point_size=30,
     labels=None,
     quantile=0.85,
+    label_fontsize=18,
     draw_diagonal=True,
     savepath=None,
     convexhull=True,
@@ -597,12 +598,14 @@ def plot_full_scatter_matrix(
     hhat_size=110,
     show_legend=True,
     draw_upper_corr=False,      # draw correlation in upper-diagonal cells
+    corr_type="pearson",        # "pearson" or "spearman"
     corr_fmt="{:.2f}",         # format for the correlation text
     corr_fontsize=12,          # font size for the correlation text
 ):
     import numpy as np
     import matplotlib.pyplot as plt
     from scipy.spatial import ConvexHull
+    from scipy.stats import spearmanr
 
     to_arr = lambda A: (A.to_numpy() if hasattr(A, "to_numpy") else np.asarray(A)) if A is not None else None
 
@@ -684,13 +687,16 @@ def plot_full_scatter_matrix(
                 # Default look for this cell
                 ax.set_xlim(0,1)
                 ax.set_ylim(0,1)
-                ax.set_xlabel(labels[j], fontsize=18)
-                ax.set_ylabel(labels[i], fontsize=18)
+                ax.set_xlabel(labels[j], fontsize=label_fontsize)
+                ax.set_ylabel(labels[i], fontsize=label_fontsize)
                 ax.set_frame_on(True)
                 ax.set_xticks([]); ax.set_yticks([])
 
                 if m.sum() >= 3 and np.nanstd(x[m]) > 0 and np.nanstd(y[m]) > 0:
-                    r = np.corrcoef(x[m], y[m])[0, 1]
+                    if corr_type == "pearson":
+                        r = np.corrcoef(x[m], y[m])[0, 1]
+                    elif corr_type == "spearman":
+                        r, _ = spearmanr(x[m], y[m])
                     s = corr_fmt.format(r) if isinstance(corr_fmt, str) else f"{r:{corr_fmt}}"
                 else:
                     s = "NA"
@@ -709,9 +715,9 @@ def plot_full_scatter_matrix(
                     ax.hist(col, bins=30, color='grey', alpha=0.7, density=True)
                 # ax.set_xlabel(labels[j], fontsize=18)
                 if j == J-1:
-                    ax.set_xlabel(labels[j], fontsize=18)
-                ax.set_ylabel("Density", fontsize=18)
-                ax.tick_params(axis='both', labelsize=17)
+                    ax.set_xlabel(labels[j], fontsize=label_fontsize)
+                ax.set_ylabel("Density", fontsize=label_fontsize)
+                ax.tick_params(axis='both', labelsize=label_fontsize-2)
                 if qvals is not None and np.isfinite(qvals[j]):
                     ax.axvline(qvals[j], color='red', linestyle='--', linewidth=1.5)
                 continue
@@ -769,15 +775,15 @@ def plot_full_scatter_matrix(
             # labels & guides
             # ax.set_xlabel(labels[j], fontsize=18)
             # ax.set_ylabel(labels[i], fontsize=18)
-            ax.tick_params(axis='both', labelsize=17)
+            ax.tick_params(axis='both', labelsize=label_fontsize-2)
 
             if i == J - 1:
-                ax.set_xlabel(labels[j], fontsize=18)
+                ax.set_xlabel(labels[j], fontsize=label_fontsize)
             else:
                 ax.set_xlabel("")
             
             if j == 0:
-                ax.set_ylabel(labels[i], fontsize=18)
+                ax.set_ylabel(labels[i], fontsize=label_fontsize)
             else:
                 ax.set_ylabel("")
 

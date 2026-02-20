@@ -265,15 +265,132 @@ def prune_close_points(points, K=None, min_K=3, seed=123):
     selected = sorted(set(selected))
     return X[selected], selected
 
-def sourceXray(Y, K, seed=123, prune=False, min_K=None, tol=1e-12, verbose=False):
+# def sourceXray(Y, K, seed=123, prune=False, min_K=None, tol=1e-12, verbose=False):
+#     """
+#     For each of the top-10 candidate H_star_hat (by log-volume), estimates:
+#         (W_star_hat, W_tilde_hat, mu_tilde_hat, C_hat)
+#     Returns list of tuples: (H_star_hat, W_star_hat, W_tilde_hat, mu_tilde_hat, C_hat, log_volume)
+#     """
+#     verbose_flag = verbose
+    
+#     rng = np.random.default_rng(seed)
+#     if isinstance(Y, pd.DataFrame):
+#         Y = Y.to_numpy()
+#     n = Y.shape[0]
+
+#     # compute row sums as column vector
+#     r = Y.sum(axis=1, keepdims=True)
+
+#     # normalized versions
+#     Y_star = Y / r
+
+#     # Step 1: Prepare projected hull points if candidates not given
+#     Y_star_np = Y_star
+#     Y_star_reduced = Y_star_np[:, :-1]
+#     basis, rank, mean = get_affine_basis_trimmed(Y_star_np, tol=tol)
+#     Y_star_proj = project_to_intrinsic(Y_star_reduced, basis, mean)   
+
+#     if verbose: 
+#         print("Computing convex hull...", end="", flush=True)
+        
+#     start = time.time()
+#     hull = ConvexHull(Y_star_proj, qhull_options="Qx Qt Q12 Pp")
+#     hull_inds = hull.vertices
+    
+#     if verbose:
+#         print(f" done in {time.time()-start:.2f}s")
+ 
+#     hull_pts = Y_star_proj[hull_inds]  # projected coordinates
+#     hull_pts_ambient = Y_star_np[hull_inds]
+
+#     if prune:
+#         min_K = 10*K if min_K is None else min_K
+#         pruned_pts, pruned_inds_local = prune_close_points(hull_pts, min_K=min_K)
+#         pruned_pts_ambient = hull_pts_ambient[pruned_inds_local]
+#         if verbose: 
+#             print("Number of pruned hull points:", len(pruned_pts))
+#         H_candidates = pruned_pts_ambient       
+#     else:
+#         H_candidates = hull_pts_ambient
+
+#     # Step 2: Get H
+#     H_star_hat, logvol_hat = estimate_H_by_max_volume(H_candidates, K, verbose=verbose_flag)
+    
+#     results = []
+
+#     # Step 3: Get W
+#     W_star_hat, _, _ = solve_H_right_inverse(Y_star, H_star_hat, verbose=verbose_flag)
+#     W_tilde_hat = W_star_hat * r 
+#     mu_tilde_hat = W_tilde_hat.mean(axis=0)
+#     C_hat = compute_C(mu_tilde_hat, H_star_hat)
+
+#     results.append((H_star_hat, W_tilde_hat, mu_tilde_hat, C_hat, logvol_hat))
+
+#     return results
+
+def _candidates_random_directions(Yc_proj_w, seed=123, 
+                                  T=20000, # how many random directions to sample
+                                  topk=1, # how many extremes to pick per direction
+                                  max_K=None, # how many candidates to return based on counts (importance)
+                                  verbose=False):
+    """
+    Returns candidate indices sorted by frequency (descending).
+    """
+    rng = np.random.default_rng(seed)
+    X = np.asarray(Yc_proj_w, float)
+    n, r = X.shape
+
+    counts = np.zeros(n, dtype=int)
+
+    if verbose:
+        print(f"Sampling {topk} extreme points in each of {T} random directions...", end="", flush=True)
+    start = time.time()
+
+    for _ in range(T):
+        u = rng.normal(size=r) # random direction
+        u /= np.linalg.norm(u) + 1e-12
+        s = X @ u # score along random direction
+
+        if topk == 1:
+            idxs = [int(np.argmax(s))]
+        else:
+            idxs = np.argpartition(s, -topk)[-topk:]
+            idxs = idxs[np.argsort(s[idxs])[::-1]] # sort topk in descending order
+
+        for idx in idxs:
+            counts[idx] += 1
+
+        # opposite direction
+        if topk == 1:
+            idxs2 = [int(np.argmin(s))]
+        else:
+            idxs2 = np.argpartition(s, topk)[:topk]
+            idxs2 = idxs2[np.argsort(s[idxs2])]
+        for idx in idxs2:
+            counts[idx] += 1
+
+    chosen = np.flatnonzero(counts > 0)
+    chosen_sorted = chosen[np.argsort(counts[chosen])[::-1]]
+
+    if max_K is not None:
+        chosen_sorted = chosen_sorted[:max_K]
+
+    if verbose:
+        print(f" done in {time.time()-start:.2f}s; #cands={len(chosen_sorted)}")
+    return chosen_sorted, counts
+
+def sourceXray(Y, K, seed=123, tol=1e-12,
+               candidate_method="exact", # "random" (random directions)
+               T=20000, topk=1, max_K=None, # for random candidate method
+               prune=False, min_K=None, # for pruning
+               verbose=False):
     """
     For each of the top-10 candidate H_star_hat (by log-volume), estimates:
         (W_star_hat, W_tilde_hat, mu_tilde_hat, C_hat)
     Returns list of tuples: (H_star_hat, W_star_hat, W_tilde_hat, mu_tilde_hat, C_hat, log_volume)
     """
     verbose_flag = verbose
-    
-    rng = np.random.default_rng(seed)
+
     if isinstance(Y, pd.DataFrame):
         Y = Y.to_numpy()
     n = Y.shape[0]
@@ -284,34 +401,60 @@ def sourceXray(Y, K, seed=123, prune=False, min_K=None, tol=1e-12, verbose=False
     # normalized versions
     Y_star = Y / r
 
-    # Step 1: Prepare projected hull points if candidates not given
-    Y_star_np = Y_star
-    Y_star_reduced = Y_star_np[:, :-1]
-    basis, rank, mean = get_affine_basis_trimmed(Y_star_np, tol=tol)
-    Y_star_proj = project_to_intrinsic(Y_star_reduced, basis, mean)   
-
-    if verbose: 
-        print("Computing convex hull...", end="", flush=True)
-        
-    start = time.time()
-    hull = ConvexHull(Y_star_proj, qhull_options="Qx Qt Q12 Pp")
-    hull_inds = hull.vertices
+    # Step 0: Project to intrinsic space
+    # drop last coordinate to work in R^{J-1} affine embedding
+    Y_star_reduced = Y_star[:, :-1].astype(float, copy=False)  # (n, J-1)
     
-    if verbose:
-        print(f" done in {time.time()-start:.2f}s")
- 
-    hull_pts = Y_star_proj[hull_inds]  # projected coordinates
-    hull_pts_ambient = Y_star_np[hull_inds]
+    # fit affine basis via SVD on centered reduced coordinates
+    mean = Y_star_reduced.mean(axis=0, keepdims=True)          # (1, J-1)
+    Yc = Y_star_reduced - mean
+    U, S, Vt = np.linalg.svd(Yc, full_matrices=False)
+    rank = int(np.sum(S > tol))
+    basis = Vt[:rank].T
 
+    # project to intrinsic coords
+    Yc_proj = Yc @ basis # (n, rank) 
+    
+    # Step 1: candidates
+    if candidate_method == "exact":
+        if verbose: 
+            print("Computing convex hull...", end="", flush=True)
+        
+        start = time.time()
+        hull = ConvexHull(Yc_proj, qhull_options="Qx Qt Q12 Pp")
+        cand_idx = hull.vertices
+
+        if verbose:
+            print(f" done in {time.time()-start:.2f}s")
+        
+        cand_proj = Yc_proj[cand_idx]  # projected coordinates
+
+    elif candidate_method == "random":
+        # whitening: scale to unit covariance (remove directional stretch and make all directions comparable)
+        # fit covariance in intrinsic space and build inv sqrt
+        C = (Yc_proj.T @ Yc_proj) / max(n - 1, 1)  # (rank, rank)
+        evals, evecs = np.linalg.eigh(C)
+        evals = np.maximum(evals, tol)
+        inv_sqrt_cov = evecs @ np.diag(1.0 / np.sqrt(evals)) @ evecs.T  # (rank, rank)
+        Yc_proj_w = Yc_proj @ inv_sqrt_cov # (n, rank)
+
+        cand_idx, cand_counts = _candidates_random_directions(Yc_proj_w, seed=seed, T=T, topk=topk, max_K=max_K, verbose=verbose)
+        cand_proj = Yc_proj_w[cand_idx]  # projected coordinates
+
+    else:
+        raise ValueError("candidate_method must be 'exact' or 'random'")
+
+    cand_ambient = Y_star[cand_idx] 
+
+    # distance based pruning is good to handle "near duplicates"
     if prune:
         min_K = 10*K if min_K is None else min_K
-        pruned_pts, pruned_inds_local = prune_close_points(hull_pts, min_K=min_K)
-        pruned_pts_ambient = hull_pts_ambient[pruned_inds_local]
+        pruned_pts, pruned_idx_local = prune_close_points(cand_proj, min_K=min_K)
+        cand_ambient = cand_ambient[pruned_idx_local]
         if verbose: 
-            print("Number of pruned hull points:", len(pruned_pts))
-        H_candidates = pruned_pts_ambient       
-    else:
-        H_candidates = hull_pts_ambient
+            print("Number of pruned candidates:", len(pruned_pts))
+
+    H_candidates = cand_ambient
 
     # Step 2: Get H
     H_star_hat, logvol_hat = estimate_H_by_max_volume(H_candidates, K, verbose=verbose_flag)
