@@ -680,7 +680,7 @@ def plot_full_scatter_matrix(
                     ax.axis('off')
                     continue
             
-                # Upper triangle: show Pearson r centered
+                # Upper triangle: show Pearson/Spearman r centered
                 x = Y_arr[:, j]; y = Y_arr[:, i]
                 m = np.isfinite(x) & np.isfinite(y)
             
@@ -773,8 +773,6 @@ def plot_full_scatter_matrix(
                         legend_added.add(legend_key)
 
             # labels & guides
-            # ax.set_xlabel(labels[j], fontsize=18)
-            # ax.set_ylabel(labels[i], fontsize=18)
             ax.tick_params(axis='both', labelsize=label_fontsize-2)
 
             if i == J - 1:
@@ -1458,6 +1456,7 @@ def plot_C_matrix_grouped_by_k(
     show_err=True,              # if 3D input, show error bars (std)
     capsize=3, 
     savepath=None,
+    colors=None,
 ):
     """
     Plot grouped bars by source (k) with one bar per feature (j).
@@ -1513,10 +1512,19 @@ def plot_C_matrix_grouped_by_k(
                 kwargs["yerr"] = yerr
                 kwargs["error_kw"] = {"elinewidth": 1.2, "capsize": capsize}
 
+        # choose color for this feature
+        if colors is None:
+            c = None
+        elif isinstance(colors, dict):
+            c = colors.get(labels[j], None)
+        else:
+            c = colors[j]  # assume list/tuple length J
+
         ax.bar(
             x + j * width,
             C_mean[j, :],
             width,
+            color=c,
             label=labels[j],
             **kwargs,                                   # <- only present when needed
         )
